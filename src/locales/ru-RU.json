@@ -1,0 +1,11 @@
+{
+    "author": {
+        "name": "Reques6e",
+        "github": "https://github.com/reques6e"
+    },
+    "description": "Русская локализация",
+    "dictionary": {
+        "hello": "Привет!",
+        "welcome": "Добро пожаловать"
+    }
+}
