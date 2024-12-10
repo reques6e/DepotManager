@@ -17,7 +17,7 @@ except ImportError:
 
     main()
 
-# from api.account.router import account as router_account
+from api.account.router import router as router_account
 # from data.response.exceptions import FastAPIExceptionHandlers
 
 api = FastAPI(
@@ -36,12 +36,12 @@ api.add_middleware(
 
 # FastAPIExceptionHandlers(api)
 
-# api.include_router(router_account, prefix='/account', tags=['Account'])
+api.include_router(router_account)
 
 
 if __name__ == '__main__':
     uvicorn.run(
-        app='main:api', 
+        app='app:api', 
         host='0.0.0.0', 
         port=91,
         reload=True # В проде офнуть нужно
