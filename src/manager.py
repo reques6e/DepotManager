@@ -165,3 +165,52 @@ class UserDataManager:
         :return: Обновлённый объект пользователя.
         """
         ...
+
+
+class TaskManager:
+    TASK_TYPE_LIST = [
+        'delete_user',         # Удаление пользователя
+        'update_user',         # Обновление данных пользователя
+        'create_user',         # Создание нового пользователя
+        'reset_password',      # Сброс пароля пользователя
+        'block_user',          # Блокировка пользователя
+        'unblock_user',        # Разблокировка пользователя
+
+        'add_item',            # Добавление нового товара
+        'update_item',         # Обновление информации о товаре
+        'delete_item',         # Удаление товара
+        'move_item',           # Перемещение товара между складами
+        'check_item_stock',    # Проверка наличия товара на складе
+
+        'create_task',         # Создание новой задачи
+        'update_task',         # Обновление задачи
+        'delete_task',         # Удаление задачи
+        'assign_task',         # Назначение задачи пользователю
+        'complete_task',       # Пометка задачи как завершенной
+
+        'generate_report',     # Генерация отчета (например, по складу или задачам)
+        'export_data',         # Экспорт данных (например, в Excel)
+        'import_data',         # Импорт данных в систему
+
+        'update_settings',     # Обновление настроек системы
+        'view_logs',           # Просмотр логов действий
+        'send_notification',   # Отправка уведомлений пользователям
+    ]
+
+    def __init__(self):
+        pass
+
+    @property
+    def available_task_types(self) -> list[str]:
+        """
+        Возвращает список доступных типов задач.
+        """
+        return self.TASK_TYPE_LIST
+    
+    def check_task_type(self, task_type: str) -> bool:
+        """
+        Проверяет, является ли тип задачи допустимым.
+        """
+        if task_type not in self.TASK_TYPE_LIST:
+            raise ValueError(f"Недопустимый тип задачи: {task_type}")
+        return True
