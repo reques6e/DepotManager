@@ -13,6 +13,10 @@ import qrcode
 import io
 
 from src.config import config, settings
+from api.account.models import UserStructure
+from api.account.exceptions import (
+    UserIsBlocked, UserPasswordReset
+)
 
 
 class TwoFactor:
@@ -53,3 +57,111 @@ class TwoFactor:
         :return: True, если код корректен; иначе False.
         """
         return self.totp.verify(code)
+
+
+class UserDataManager:
+    def __init__(self):
+        pass
+    
+    @staticmethod
+    async def validate_user(
+        user: UserStructure
+    ) -> bool:
+        """
+        Проверка пользователя на блокировки.
+        :param user: Информация о пользователе.
+        :return: True - пользователь не имеет ни каких блокировок/ограничений
+        """
+
+        if user.is_blocked:
+            raise UserIsBlocked('Пользователь заблокирован')
+        
+        if user.requires_password_reset:
+            raise UserPasswordReset('Необходимо сменить пароль')
+        
+        return True
+
+    @staticmethod
+    async def update_phone_number(
+        user: UserStructure, 
+        phone_number: str
+    ) -> UserStructure:
+        """
+        Обновление номера телефона пользователя.
+        :param user: Информация о пользователе.
+        :param phone_number: Новый номер телефона.
+        :return: Обновлённый объект пользователя.
+        """
+        ...
+
+    @staticmethod
+    async def get_user_full_name(
+        user: UserStructure
+    ) -> str:
+        """
+        Получение полного имени пользователя.
+        :param user: Информация о пользователе.
+        :return: Полное имя пользователя в формате "Фамилия Имя".
+        """
+        return f"{user.surname} {user.name}"
+
+    @staticmethod
+    async def check_two_factor_auth(
+        user: UserStructure
+    ) -> bool:
+        """
+        Проверка, активирована ли двухфакторная аутентификация у пользователя.
+        :param user: Информация о пользователе.
+        :return: True, если двухфакторная аутентификация активирована.
+        """
+        return user.two_factor
+
+    @staticmethod
+    async def update_phone_number(
+        user: UserStructure, 
+        phone_number: str
+    ) -> UserStructure:
+        """
+        Обновление номера телефона пользователя.
+        :param user: Информация о пользователе.
+        :param phone_number: Новый номер телефона. (Обязательно с +)
+        :return: Обновлённый объект пользователя.
+        """
+        user.phone_number = phone_number
+        return user
+
+    @staticmethod
+    async def validate_email(
+        email: UserStructure
+    ) -> bool:
+        """
+        Проверка формата email.
+        :param user: Информация о пользователе.
+        :return: True, если email валиден.
+        """
+        if "@" not in email or "." not in email.split("@")[-1]:
+            raise ValueError('Неверный формат email')
+        
+        return True
+    
+    @staticmethod
+    async def deactivate_user(
+        user: UserStructure
+    ) -> UserStructure:
+        """
+        Деактивация пользователя (установка статуса "Заблокирован").
+        :param user: Информация о пользователе.
+        :return: Обновлённый объект пользователя.
+        """
+        ...
+
+    @staticmethod
+    async def reset_user_password(
+        user: UserStructure
+    ) -> UserStructure:
+        """
+        Установка флага на смену пароля при следующем входе.
+        :param user: Информация о пользователе.
+        :return: Обновлённый объект пользователя.
+        """
+        ...
