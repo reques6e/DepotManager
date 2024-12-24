@@ -11,13 +11,20 @@ __config__ = AuthXConfig(
 
 security = AuthX(config=__config__)
 
-def get_current_token(token: str = Depends(security.get_token_from_request)):
+async def get_current_token(token: str = Depends(security.get_access_token_from_request)):
+    """
+    Проверяет валидность токена и извлекает данные пользователя.
+
+    :param token: JWT-токен, извлечённый из заголовков.
+    :return: Данные пользователя, содержащиеся в токене.
+    """
     try:
-        user = security.verify_token(token=token)
-        #TODO Проверка по BD
-        return user  
+        payload = security.verify_token(token)
+        return payload  # Возвращаем данные из токена
     except Exception as e:
+        print(e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f'Неверный токен'
+            detail="Невалидный токен или истёк срок действия",
+            headers={"WWW-Authenticate": "Bearer"},
         )
