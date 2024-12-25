@@ -1,0 +1,30 @@
+{
+    "monday": {
+        "start": "9:00",
+        "end": "20:00"
+    },
+    "tuesday": {
+        "start": "9:00",
+        "end": "20:00"
+    },
+    "wednesday": {
+        "start": "9:00",
+        "end": "20:00"
+    },
+    "thursday": {
+        "start": "9:00",
+        "end": "20:00"
+    },
+    "friday": {
+        "start": "9:00",
+        "end": "20:00"
+    },
+    "saturday": {
+        "start": false,
+        "end": false
+    },
+    "sunday": {
+        "start": false,
+        "end": false
+    }
+}
