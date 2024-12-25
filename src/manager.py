@@ -13,7 +13,7 @@ import qrcode
 import io
 
 from src.config import config, settings
-from api.account.models import UserStructure
+from api.models import UserStructure
 from api.account.exceptions import (
     UserIsBlocked, UserPasswordReset
 )
