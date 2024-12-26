@@ -6,3 +6,5 @@ DATABASE:
   name: yourdb
 
 SECRET_KEY: "secretka"
+
+__version__: "0.0.1"
