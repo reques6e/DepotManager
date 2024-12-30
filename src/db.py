@@ -125,7 +125,10 @@ class DepotItems(Base):
     description = Column(String(500), nullable=True)
     status = Column(String(50), nullable=True)
     price = Column(Float, nullable=True)
-    depot_section = Column(Integer, ForeignKey('depot_sections.id'), nullable=False)
+    depot_section = Column(Integer, ForeignKey('depot_sections.id'), nullable=True)
+    expiration_date = Column(Integer, nullable=True)
+    storage_conditions = Column(String(255), nullable=True)
+    supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=True)  # Добавлен ForeignKey на таблицу поставщиков
     item_type = Column(Integer, ForeignKey('depot_items_type.id'), nullable=True)
     image_url = Column(String(255), nullable=True)
     received_at = Column(DateTime, nullable=True)
@@ -135,6 +138,34 @@ class DepotItems(Base):
     depot = relationship('Depot', backref='items')
     depot_sections = relationship('DepotSection', backref='items')
     depot_items_type = relationship('DepotItemsType', backref='items')
+    supplier = relationship('Supplier', backref='items')
+
+
+class Supplier(Base):
+    __tablename__ = 'suppliers'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(200), nullable=False)
+    contact_person = Column(String(100), nullable=True)
+    contact_phone = Column(String(20), nullable=False)
+    contact_email = Column(String(100), nullable=True)
+    address = Column(String(300), nullable=True)
+    postal_code = Column(String(20), nullable=True)
+    country = Column(String(100), nullable=False)
+    registration_number = Column(String(50), nullable=True)
+    tax_identification_number = Column(String(50), nullable=True)
+    payment_terms = Column(String(200), nullable=True)
+    bank_details = Column(String(255), nullable=True)
+    average_delivery_time = Column(Integer, nullable=True)
+    reliability_rating = Column(Float, nullable=True)
+    compliance_certificates = Column(String(255), nullable=True)
+    preferred = Column(Boolean, default=False)
+    notes = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    items = relationship('DepotItems', backref='supplier')
+
 
 class DepotItemsType(Base):
     __tablename__ = 'depot_items_type'
