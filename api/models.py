@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from datetime import datetime
 
 
@@ -67,9 +67,6 @@ class DepotSectionModel(BaseModel):
     description: str | None = Field(None, max_length=255, description='Дополнительные примечания')
     created_at: datetime | None = Field(default_factory=datetime.utcnow, description='Время создания записи')
 
-    class Config:
-        orm_mode = True
-
 
 class DepotItemsStructure(BaseModel):
     id: int | None = Field(None, description='Уникальный идентификатор предмета')
@@ -81,14 +78,56 @@ class DepotItemsStructure(BaseModel):
     description: str | None = Field(None, max_length=500, description='Дополнительное описание предмета')
     status: str | None = Field(None, max_length=50, description='Состояние предмета')
     price: float | None = Field(None, description='Стоимость предмета')
-    depot_section: int | None = Field(None, description='Секция в складе')  # Привел тип к int
+    depot_section: int | None = Field(None, description='Секция в складе')
+    expiration_date: int | None = Field(None, description='Срок годности предмета (Если есть)')
+    storage_conditions: str | None = Field(None, description='Условия хранения')
+    supplier_id: int | None = Field(None, description='ID поставщика')
     item_type: int | None = Field(None, description='Тип предмета (например, хрупкий, опасный)')
     image_url: str | None = Field(None, description='URL фотографии предмета')
     received_at: datetime | None = Field(None, description='Дата получения предмета')
     created_at: datetime = Field(..., description='Дата и время добавления предмета на склад')
     updated_at: datetime | None = Field(None, description='Дата последнего обновления информации о предмете')
 
+class SupplierModel(BaseModel):
+    id: int | None = Field(None, description='Уникальный идентификатор поставщика')
+    name: str = Field(..., max_length=200, description='Название поставщика')
+    contact_person: str | None = Field(None, max_length=100, description='Контактное лицо поставщика')
+    contact_phone: str = Field(..., max_length=20, description='Контактный номер телефона (в международном формате)')
+    contact_email: str | None = Field(None, max_length=100, description='Электронная почта для связи')
+    address: str | None = Field(None, max_length=300, description='Физический адрес поставщика')
+    postal_code: str | None = Field(None, max_length=20, description='Почтовый индекс')
+    country: str = Field(..., max_length=100, description='Страна, где расположен поставщик')
+    registration_number: str | None = Field(None, max_length=50, description='Регистрационный номер компании поставщика')
+    tax_identification_number: str | None = Field(None, max_length=50, description='Налоговый идентификационный номер')
+    payment_terms: str | None = Field(None, max_length=200, description='Условия оплаты (например, 30 дней на оплату)')
+    bank_details: Dict[str, str] | None = Field(
+        default_factory=dict,
+        description='Банковские реквизиты (например, "банк": "Название банка", "счет": "123456789")'
+    )
+    product_categories: List[str] | None = Field(
+        default_factory=list,
+        description='Список категорий товаров, которые поставляет данный поставщик'
+    )
+    average_delivery_time: int | None = Field(
+        None, description='Среднее время доставки в днях'
+    )
+    reliability_rating: float | None = Field(
+        None, ge=0.0, le=5.0, description='Рейтинг надежности поставщика (от 0 до 5)'
+    )
+    compliance_certificates: List[str] | None = Field(
+        default_factory=list, description='Список сертификатов соответствия'
+    )
+    preferred: bool = Field(False, description='Является ли поставщик предпочтительным')
+    notes: str | None = Field(None, max_length=500, description='Дополнительные заметки')
+    created_at: datetime = Field(default_factory=datetime.utcnow, description='Дата создания записи')
+    updated_at: datetime = Field(default_factory=datetime.utcnow, description='Дата последнего обновления записи')
+
 
 class DepotItemsType(BaseModel):
     id: int | None = Field(None, description='Уникальный идентификатор типа предмета')
     name: str = Field(..., max_length=250, description='Названия типа предмета')
+
+    
+class References(BaseModel):
+    id: int | None = Field(None, description='Уникальный идентификатор типа справки')
+
