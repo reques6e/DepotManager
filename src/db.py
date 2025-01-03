@@ -7,7 +7,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
 
@@ -25,7 +25,8 @@ from api.models import (
 
 Base = declarative_base()
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
+
 
 class User(Base):
     __tablename__ = 'users'
@@ -138,7 +139,7 @@ class DepotItems(Base):
     depot = relationship('Depot', backref='items')
     depot_sections = relationship('DepotSection', backref='items')
     depot_items_type = relationship('DepotItemsType', backref='items')
-    supplier = relationship('Supplier', backref='items')
+    supplier = relationship('Supplier', backref='depot_items')
 
 
 class Supplier(Base):
@@ -164,8 +165,6 @@ class Supplier(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    items = relationship('DepotItems', backref='supplier')
-
 
 class DepotItemsType(Base):
     __tablename__ = 'depot_items_type'
@@ -187,7 +186,7 @@ class DataBase:
     
     def get_session(self) -> AsyncSession:
         """Получение сессии для работы с базой данных"""
-        return self.async_session()  # Возвращаем сессию напрямую
+        return self.async_session() 
     
     async def init_db(self):
         """Инициализация базы данных (создание таблиц)"""
@@ -198,25 +197,34 @@ class DataBase:
         async with self.get_session() as session:
             stmt = select(Depot).filter(Depot.id == depot_id)
             result = await session.execute(stmt)
+            
             return result.scalar_one_or_none()
 
+    async def get_user(self, user_id: int):
+        """Получение пользователя по его ID"""
+        async with self.get_session() as session:
+            stmt = select(User).filter(User.id == user_id)
+            result = await session.execute(stmt)
+
+            return result.scalar_one_or_none()
+        
     async def create_group_user(self, group_data: GroupUsersStructure):
         """Создание группы пользователей"""
         
         group = GroupUsers(
             name=group_data.name
         )
-        group.set_rules(group_data.rules)  # Преобразуем список в строку JSON
+        group.set_rules(group_data.rules) 
         
         async with self.get_session() as session:
             session.add(group)
             try:
-                await session.commit()  # Сохраняем в базе
+                await session.commit() 
             except IntegrityError:
-                await session.rollback()  # В случае ошибки откатываем изменения
+                await session.rollback() 
                 return None  
             
-            return group  # Возвращаем данные
+            return group  
 
     async def create_depot_item(self, data: DepotItemsStructure):
         """Создание DepotItem"""
@@ -231,6 +239,9 @@ class DataBase:
             status=data.status,
             price=data.price,
             depot_section=data.depot_section,
+            expiration_date=data.expiration_date,
+            storage_conditions=data.storage_conditions, 
+            supplier_id=data.supplier_id,
             item_type=data.item_type,
             image_url=data.image_url,
             received_at=data.received_at,
@@ -241,13 +252,13 @@ class DataBase:
         async with self.get_session() as session:
             session.add(nw_data)
             try:
-                await session.commit()  # Сохраняем в базе
+                await session.commit() 
             except IntegrityError as e:
-                await session.rollback()  # В случае ошибки откатываем изменения
+                await session.rollback()  
                 print(e)
                 return None  
             
-            return nw_data  # Возвращаем данные
+            return nw_data  
         
     async def create_depot_section(self, data: DepotSectionModel):
         """Создание DepotSection"""
@@ -267,17 +278,18 @@ class DataBase:
         async with self.get_session() as session:
             session.add(nw_data)
             try:
-                await session.commit()  # Сохраняем в базе
+                await session.commit()
             except IntegrityError:
-                await session.rollback()  # В случае ошибки откатываем изменения
+                await session.rollback()  
                 return None  
             
-            return nw_data  # Возвращаем данные
+            return nw_data  
         
     async def create_user(self, user_data: UserStructure):
         """Создание пользователя в таблице users"""
         # Хешируем пароль перед сохранением
-        hashed_password = pwd_context.hash(user_data.password_hash)
+        # Сделаю шифрование на фронтенде
+        # hashed_password = pwd_context.hash(user_data.password_hash)
         
         user = User(
             login=user_data.login,
@@ -288,7 +300,7 @@ class DataBase:
             group_id=user_data.group_id,
             city_id=user_data.city_id,
             prefix=user_data.prefix,
-            password_hash=hashed_password,
+            password_hash=user_data.password_hash, 
             status=user_data.status,
             two_factor=user_data.two_factor,
             is_blocked=user_data.is_blocked,
@@ -299,9 +311,24 @@ class DataBase:
         async with self.get_session() as session:
             session.add(user)
             try:
-                await session.commit()  # Сохраняем в базе
+                await session.commit() 
             except IntegrityError:
-                await session.rollback()  # В случае ошибки откатываем изменения
+                await session.rollback()  
                 return None  
             
-            return user  # Возвращаем данные
+            return user  
+        
+    async def authenticate_user(self, login: str, password_hash: str):
+        """Проверка логина и пароля пользователя"""
+        async with self.get_session() as session:
+            stmt = select(User).where(User.login == login)
+            try:
+                result = await session.execute(stmt)
+                user = result.scalar_one()  
+            except NoResultFound:
+                return None 
+            
+            if password_hash != user.password_hash:
+                return False  # Неверный пароль
+
+            return user  
