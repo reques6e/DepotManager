@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, status, Body
 from fastapi.responses import JSONResponse
-from fastapi.requests import Request
+from fastapi.security import OAuth2PasswordBearer  
+from typing import Annotated
 
-from authx import RequestToken
-from src.auth import security, get_current_token
-
+from src.auth import create_access_token, get_current_user
+from api.models import UserStructure
 from src.db import DataBase
 
 database = DataBase()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 router = APIRouter(
     prefix='/account',
@@ -21,84 +23,83 @@ router = APIRouter(
 )
 async def authorization(
     login: str = Query(..., description='Логин пользователя'),
-    hash_password: str = Query(..., description='Зашифрованный пароль пользователя')
+    password: str = Query(..., description='Пароль пользователя')
 ) -> JSONResponse:
     """
     Эндпоинт для авторизации пользователя по логину и паролю. 
-    Пользователь должен предоставить свой логин и зашифрованный пароль в запросе. 
+    Пользователь должен предоставить свой логин и пароль в запросе. 
     Если данные корректны, возвращается успешный ответ с токеном авторизации.
-    
-    **Параметры запроса:**
-    - `login`: Логин пользователя (строка).
-    - `hash_password`: Зашифрованный пароль пользователя (строка).
-
-    **Пример ответа от сервера при успешной авторизации:**
-    - `200` - Авторизация прошла успешно
-
-    ```js 
-    {
-        'message': 'Авторизация прошла успешно', 
-        'data': {
-            'id': user_data.id,
-            'login': user_data.login,
-            'token': jwt_token
-        }
-    }
-    ```
-
-    **Пример ответа от сервера при не успешной авторизации:**
-    - `401` - Не авторизован
-
-    ```js 
-    {
-        'message': 'Неверный логин или пароль'
-    }
-    ```
     """
 
-    if user_data := await database.authenticate_user(
+    user_data = await database.authenticate_user(
         login=login,
-        password_hash=hash_password
-    ):
-        jwt_token = security.create_access_token(uid=hash_password, user_id=user_data.id)
+        password_hash=password
+    )
 
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content={
-                'message': 'Авторизация прошла успешно', 
-                'data': {
-                    'id': user_data.id,
-                    'login': user_data.login,
-                    'token': jwt_token
-                }
-            }
-        )
-    else:
+    if not user_data:
         return JSONResponse(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            content={
-                'message': 'Неверный логин или пароль'
-            }
+            content={'message': 'Неверный логин или пароль'}
         )
+
+    jwt_token = create_access_token(data={'id': user_data.id})
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            'message': 'Авторизация прошла успешно',
+            'data': {
+                'id': user_data.id,
+                'login': user_data.login,
+                'token': jwt_token
+            }
+        }
+    )
 
 @router.get(
     path='/me',
     status_code=status.HTTP_200_OK,
-    description='Получение информации о себе',
+    description='Получение информации о себе'
 )
 async def get_my_account(
-    request: Request,  # Передаем Request напрямую
-    current_user=Depends(get_current_token),
-    target_user: int | None = Query(
-        default=None,
-        description='ID целевого пользователя (для администраторов или пользователей, имеющих права)'
-    )
+    current_user: Annotated[UserStructure, Depends(get_current_user)]
 ) -> JSONResponse:
     """
+    Эндпоинт для получения информации о себе.
 
+    :param current_user: Данные текущего пользователя.
+    :return: Информация о пользователе.
     """
-
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content={"message": current_user.id}
+        content={
+            'message': 'Информация была успешно получена',
+            'data': {
+                'id': current_user.id,
+                'login': current_user.login,
+                'name': current_user.name,
+                'surname': current_user.surname,
+                'email': current_user.email,
+                'phone_number': current_user.phone_number,
+                'group_id': current_user.group_id,
+                'city_id': current_user.city_id,
+                'prefix': current_user.prefix,
+                'status': current_user.status,
+                'two_factor': current_user.two_factor,
+                'is_blocked': current_user.is_blocked,
+                'requires_password_reset': current_user.requires_password_reset,
+                'created_at': str(current_user.created_at),
+            }
+        }
     )
+
+@router.put(
+    path='/me',
+    status_code=status.HTTP_200_OK,
+    description='Обновляет информацию своего профиля'
+)
+async def get_my_account(
+    current_user: Annotated[UserStructure, Depends(get_current_user)],
+    new_data: UserStructure = Body(..., description='Новые данные пользователя')
+) -> JSONResponse:
+    ...
