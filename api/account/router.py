@@ -92,3 +92,14 @@ async def get_my_account(
             }
         }
     )
+
+@router.put(
+    path='/me',
+    status_code=status.HTTP_200_OK,
+    description='Обновляет информацию своего профиля'
+)
+async def get_my_account(
+    current_user: Annotated[UserStructure, Depends(get_current_user)],
+    new_data: UserStructure = Body(..., description='Новые данные пользователя')
+) -> JSONResponse:
+    ...
