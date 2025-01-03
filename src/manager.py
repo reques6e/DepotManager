@@ -45,7 +45,7 @@ class TwoFactor:
 
         qr_img = qrcode.make(uri)
         buffer = io.BytesIO()
-        qr_img.save(buffer, format="PNG")
+        qr_img.save(buffer, format='PNG')
         buffer.seek(0)
 
         return buffer.read()
@@ -139,7 +139,7 @@ class UserDataManager:
         :param user: Информация о пользователе.
         :return: True, если email валиден.
         """
-        if "@" not in email or "." not in email.split("@")[-1]:
+        if '@' not in email or '.' not in email.split('@')[-1]:
             raise ValueError('Неверный формат email')
         
         return True
