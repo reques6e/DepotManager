@@ -194,26 +194,76 @@ class DataBase:
 
     async def get_depot_by_id(self, depot_id: int):
         """Получение склада по id"""
+        query = select(Depot).filter(Depot.id == depot_id)
         async with self.get_session() as session:
-            stmt = select(Depot).filter(Depot.id == depot_id)
-            result = await session.execute(stmt)
-            
+            result = await session.execute(query)
             return result.scalar_one_or_none()
 
+    async def get_all_groups(self):
+        """Получение всех групп (id, name, rules)"""
+        query = select(GroupUsers.id, GroupUsers.name, GroupUsers.rules)
+        async with self.get_session() as session:
+            result = await session.execute(query)
+            return [{'id': row.id, 'name': row.name, 'rules': row.rules} for row in result.fetchall()]
+
+
+    async def get_group(self, group_id: int):
+        """Получение группы по ID"""
+        query = select(GroupUsers).filter(GroupUsers.id == group_id)
+        async with self.get_session() as session:
+            result = await session.execute(query)
+            return result.scalar_one_or_none()
+        
     async def get_user(self, user_id: int):
         """Получение пользователя по его ID"""
+        query = select(User).filter(User.id == user_id)
         async with self.get_session() as session:
-            stmt = select(User).filter(User.id == user_id)
-            result = await session.execute(stmt)
-
+            result = await session.execute(query)
             return result.scalar_one_or_none()
-        
+
+    async def update_group(self, group_data: GroupUsersStructure) -> GroupUsers | None:
+        """Обновляет данные группы"""
+        async with self.get_session() as session:
+            query = select(GroupUsers).filter(GroupUsers.id == group_data.id)
+            result = await session.execute(query)
+            group = result.scalar_one_or_none()
+
+            if not group:
+                return None  # Группа с указанным ID не найдена
+
+            group.name = group_data.name
+            group.set_rules(group_data.rules)
+
+            try:
+                await session.commit() 
+                return group
+            except IntegrityError:
+                await session.rollback()  
+                return None
+
+    async def delete_group(self, group_id: int) -> bool:
+        """Удаляет группу из таблицы group_users по ID"""
+        async with self.get_session() as session:
+            query = select(GroupUsers).filter(GroupUsers.id == group_id)
+            result = await session.execute(query)
+            group = result.scalar_one_or_none()
+
+            if not group:
+                return False 
+
+            await session.delete(group)
+
+            try:
+                await session.commit()  
+                return True
+            except IntegrityError:
+                await session.rollback() 
+                return False
+
+
     async def create_group_user(self, group_data: GroupUsersStructure):
         """Создание группы пользователей"""
-        
-        group = GroupUsers(
-            name=group_data.name
-        )
+        group = GroupUsers(name=group_data.name)
         group.set_rules(group_data.rules) 
         
         async with self.get_session() as session:
@@ -223,12 +273,10 @@ class DataBase:
             except IntegrityError:
                 await session.rollback() 
                 return None  
-            
-            return group  
+            return group
 
     async def create_depot_item(self, data: DepotItemsStructure):
         """Создание DepotItem"""
-        
         nw_data = DepotItems(
             depot_id=data.depot_id,
             name=data.name,
@@ -257,12 +305,10 @@ class DataBase:
                 await session.rollback()  
                 print(e)
                 return None  
-            
             return nw_data  
-        
+
     async def create_depot_section(self, data: DepotSectionModel):
         """Создание DepotSection"""
-        
         nw_data = DepotSection(
             depot_id=data.depot_id,
             section_name=data.section_name,
@@ -282,15 +328,10 @@ class DataBase:
             except IntegrityError:
                 await session.rollback()  
                 return None  
-            
             return nw_data  
-        
+
     async def create_user(self, user_data: UserStructure):
         """Создание пользователя в таблице users"""
-        # Хешируем пароль перед сохранением
-        # Сделаю шифрование на фронтенде
-        # hashed_password = pwd_context.hash(user_data.password_hash)
-        
         user = User(
             login=user_data.login,
             name=user_data.name,
@@ -315,15 +356,14 @@ class DataBase:
             except IntegrityError:
                 await session.rollback()  
                 return None  
-            
             return user  
-        
+
     async def authenticate_user(self, login: str, password_hash: str):
         """Проверка логина и пароля пользователя"""
+        query = select(User).where(User.login == login)
         async with self.get_session() as session:
-            stmt = select(User).where(User.login == login)
             try:
-                result = await session.execute(stmt)
+                result = await session.execute(query)
                 user = result.scalar_one()  
             except NoResultFound:
                 return None 
