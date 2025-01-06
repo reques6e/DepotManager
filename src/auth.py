@@ -7,17 +7,14 @@ from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from typing import Annotated
 
-from src.config import config
-from src.db import DataBase
+from config import settings
 from api.models import UserStructure
+from api.account.dao import UserDAO
+from config import settings
 
-database = DataBase()
-
-SECRET_KEY = config.SECRET_KEY
 ALGORITHM = 'HS256'
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='token')
-
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> UserStructure:
     """
@@ -42,21 +39,21 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
     )
 
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_JWT_KEY, algorithms=[ALGORITHM])
         user_id = payload.get('id')
         if user_id is None:
             raise credentials_exception
     except InvalidTokenError:
         raise credentials_exception
 
-    user = await database.get_user(user_id=user_id)
+    user = await UserDAO.find_one_or_none(id=user_id)
     if user is None:
         raise credentials_exception
     
     if user.is_blocked:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f'Пользователь {user.login} был заблокирован',
+            detail=f'Пользователь {user.login} заблокирован',
             headers={'WWW-Authenticate': 'Bearer'},
         )
     
@@ -80,7 +77,7 @@ async def decode_jwt(token: str) -> dict:
         HTTPException: В случае истечения срока действия токена или других ошибок.
     """
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_JWT_KEY, algorithms=[ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(
@@ -116,5 +113,5 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.utcnow() + timedelta(days=30)
     
     to_encode.update({'exp': expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_JWT_KEY, algorithm=ALGORITHM)
     return encoded_jwt

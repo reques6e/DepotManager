@@ -14,9 +14,6 @@ import io
 
 from src.config import config, settings
 from api.models import UserStructure
-from api.account.exceptions import (
-    UserIsBlocked, UserPasswordReset
-)
 
 
 class TwoFactor:
@@ -74,12 +71,9 @@ class UserDataManager:
         """
 
         if user.is_blocked:
-            raise UserIsBlocked('Пользователь заблокирован')
+            return True
         
-        if user.requires_password_reset:
-            raise UserPasswordReset('Необходимо сменить пароль')
-        
-        return True
+        return False
 
     @staticmethod
     async def update_phone_number(
