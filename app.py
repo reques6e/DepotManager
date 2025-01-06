@@ -22,7 +22,9 @@ except ImportError:
 
 from api.account.router import router as router_account 
 from api.group.router import router as router_group 
-# from data.response.exceptions import FastAPIExceptionHandlers
+
+from src.db import async_session_maker
+import asyncio
 
 logging.basicConfig(level=logging.WARNING)  
 logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
@@ -41,15 +43,20 @@ api = FastAPI(
     ],
 )
 
+origins = [
+    # 3000 - порт, на котором работает фронтенд на React.js 
+    "http://localhost:3000",
+]
+
 api.add_middleware(
     CORSMiddleware,
-    allow_origins=['*'],  # Разрешаем доступ с фронтенда
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=['GET', 'POST'],  #
-    allow_headers=['*'],  
+    allow_methods=["GET", "POST", "OPTIONS", "DELETE", "PATCH", "PUT"],
+    allow_headers=["Content-Type", "Set-Cookie", "Access-Control-Allow-Headers", 
+                   "Access-Control-Allow-Origin",
+                   "Authorization"],
 )
-
-# FastAPIExceptionHandlers(api)
 
 api.include_router(router_account)
 api.include_router(router_group)

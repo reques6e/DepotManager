@@ -1,33 +1,24 @@
 import asyncio
+from datetime import datetime
 import json
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker, relationship
 
+from sqlalchemy import Column, Integer, String
 from sqlalchemy import (
     create_engine, Column, Integer, String, Boolean, 
     DateTime, Float, ForeignKey
 )
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy.exc import IntegrityError, NoResultFound
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.future import select
+from config import settings
 
-from passlib.context import CryptContext
+# Настройка подключения к базе данных
+engine = create_async_engine(settings.DATABASE_URL, echo=True)
+async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
-from datetime import datetime
-from typing import List, Tuple
+class Base(DeclarativeBase):
+    pass
 
-from src.config import config, settings
-
-from api.models import (
-    UserStructure, CityStructure, GroupUsersStructure, DepotStructure,
-    DepotSectionModel, DepotItemsStructure
-)
-
-Base = declarative_base()
-
-pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
-
-
+# Таблицы
 class User(Base):
     __tablename__ = 'users'
 
@@ -173,202 +164,8 @@ class DepotItemsType(Base):
     name = Column(String(250), nullable=False)
 
 
-class DataBase:
-    def __init__(self, db_url: str = f'mysql+asyncmy://{config.DATABASE.user}:{config.DATABASE.password}@{config.DATABASE.host}/{config.DATABASE.name}'):
-        self.db_url = db_url
-        self.engine = create_async_engine(self.db_url, echo=True)
-        self.async_session = sessionmaker(self.engine, class_=AsyncSession, expire_on_commit=False)
-    
-    async def create_tables(self):
-        """Создание таблиц в базе данных"""
-        async with self.engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-    
-    def get_session(self) -> AsyncSession:
-        """Получение сессии для работы с базой данных"""
-        return self.async_session() 
-    
-    async def init_db(self):
-        """Инициализация базы данных (создание таблиц)"""
-        await self.create_tables()
-
-    async def get_depot_by_id(self, depot_id: int):
-        """Получение склада по id"""
-        query = select(Depot).filter(Depot.id == depot_id)
-        async with self.get_session() as session:
-            result = await session.execute(query)
-            return result.scalar_one_or_none()
-
-    async def get_all_groups(self):
-        """Получение всех групп (id, name, rules)"""
-        query = select(GroupUsers.id, GroupUsers.name, GroupUsers.rules)
-        async with self.get_session() as session:
-            result = await session.execute(query)
-            return [{'id': row.id, 'name': row.name, 'rules': row.rules} for row in result.fetchall()]
-
-
-    async def get_group(self, group_id: int):
-        """Получение группы по ID"""
-        query = select(GroupUsers).filter(GroupUsers.id == group_id)
-        async with self.get_session() as session:
-            result = await session.execute(query)
-            return result.scalar_one_or_none()
-        
-    async def get_user(self, user_id: int):
-        """Получение пользователя по его ID"""
-        query = select(User).filter(User.id == user_id)
-        async with self.get_session() as session:
-            result = await session.execute(query)
-            return result.scalar_one_or_none()
-
-    async def update_group(self, group_data: GroupUsersStructure) -> GroupUsers | None:
-        """Обновляет данные группы"""
-        async with self.get_session() as session:
-            query = select(GroupUsers).filter(GroupUsers.id == group_data.id)
-            result = await session.execute(query)
-            group = result.scalar_one_or_none()
-
-            if not group:
-                return None  # Группа с указанным ID не найдена
-
-            group.name = group_data.name
-            group.set_rules(group_data.rules)
-
-            try:
-                await session.commit() 
-                return group
-            except IntegrityError:
-                await session.rollback()  
-                return None
-
-    async def delete_group(self, group_id: int) -> bool:
-        """Удаляет группу из таблицы group_users по ID"""
-        async with self.get_session() as session:
-            query = select(GroupUsers).filter(GroupUsers.id == group_id)
-            result = await session.execute(query)
-            group = result.scalar_one_or_none()
-
-            if not group:
-                return False 
-
-            await session.delete(group)
-
-            try:
-                await session.commit()  
-                return True
-            except IntegrityError:
-                await session.rollback() 
-                return False
-
-
-    async def create_group_user(self, group_data: GroupUsersStructure):
-        """Создание группы пользователей"""
-        group = GroupUsers(name=group_data.name)
-        group.set_rules(group_data.rules) 
-        
-        async with self.get_session() as session:
-            session.add(group)
-            try:
-                await session.commit() 
-            except IntegrityError:
-                await session.rollback() 
-                return None  
-            return group
-
-    async def create_depot_item(self, data: DepotItemsStructure):
-        """Создание DepotItem"""
-        nw_data = DepotItems(
-            depot_id=data.depot_id,
-            name=data.name,
-            barcode=data.barcode,
-            weight=data.weight,
-            quantity=data.quantity,
-            description=data.description,
-            status=data.status,
-            price=data.price,
-            depot_section=data.depot_section,
-            expiration_date=data.expiration_date,
-            storage_conditions=data.storage_conditions, 
-            supplier_id=data.supplier_id,
-            item_type=data.item_type,
-            image_url=data.image_url,
-            received_at=data.received_at,
-            created_at=data.created_at,
-            updated_at=data.updated_at
-        )
-        
-        async with self.get_session() as session:
-            session.add(nw_data)
-            try:
-                await session.commit() 
-            except IntegrityError as e:
-                await session.rollback()  
-                print(e)
-                return None  
-            return nw_data  
-
-    async def create_depot_section(self, data: DepotSectionModel):
-        """Создание DepotSection"""
-        nw_data = DepotSection(
-            depot_id=data.depot_id,
-            section_name=data.section_name,
-            cabinet_number=data.cabinet_number,
-            shelf_number=data.shelf_number,
-            capacity=data.capacity,
-            max_weight=data.max_weight,
-            temperature_control=data.temperature_control,
-            humidity_control=data.humidity_control,
-            description=data.description
-        )
-        
-        async with self.get_session() as session:
-            session.add(nw_data)
-            try:
-                await session.commit()
-            except IntegrityError:
-                await session.rollback()  
-                return None  
-            return nw_data  
-
-    async def create_user(self, user_data: UserStructure):
-        """Создание пользователя в таблице users"""
-        user = User(
-            login=user_data.login,
-            name=user_data.name,
-            surname=user_data.surname,
-            email=user_data.email,
-            phone_number=user_data.phone_number,
-            group_id=user_data.group_id,
-            city_id=user_data.city_id,
-            prefix=user_data.prefix,
-            password_hash=user_data.password_hash, 
-            status=user_data.status,
-            two_factor=user_data.two_factor,
-            is_blocked=user_data.is_blocked,
-            requires_password_reset=user_data.requires_password_reset,
-            created_at=user_data.created_at
-        )
-        
-        async with self.get_session() as session:
-            session.add(user)
-            try:
-                await session.commit() 
-            except IntegrityError:
-                await session.rollback()  
-                return None  
-            return user  
-
-    async def authenticate_user(self, login: str, password_hash: str):
-        """Проверка логина и пароля пользователя"""
-        query = select(User).where(User.login == login)
-        async with self.get_session() as session:
-            try:
-                result = await session.execute(query)
-                user = result.scalar_one()  
-            except NoResultFound:
-                return None 
-            
-            if password_hash != user.password_hash:
-                return False  # Неверный пароль
-
-            return user  
+async def create_tables():
+    async with engine.begin() as conn:
+        print("Creating tables...")
+        await conn.run_sync(Base.metadata.create_all)
+        print("Tables created successfully!")

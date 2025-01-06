@@ -2,12 +2,21 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status, Body
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer  
 from typing import Annotated
+from datetime import datetime
+
+from src.db import User, async_session_maker
+
+from sqlalchemy.future import select
 
 from src.auth import create_access_token, get_current_user
 from api.models import UserStructure
-from src.db import DataBase
-
-database = DataBase()
+from api.account.dao import UserDAO
+from exceptions import (
+    UserCreateErrorException, 
+    UserLoginAlreadyExistsException,
+    UserEmailAlreadyExistsException
+)
+from logger import _logger
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -15,6 +24,81 @@ router = APIRouter(
     prefix='/account',
     tags=['Account']
 )
+
+@router.post(
+    path='/registration',
+    status_code=status.HTTP_201_CREATED,
+    description='Регистрация нового пользователя'
+)
+async def registration(
+    login: str = Body(..., description='Логин пользователя'),
+    name: str = Body(..., description='Имя пользователя'),
+    surname: str = Body(..., description='Фамилия пользователя'),
+    email: str = Body(..., description='Электронная почта пользователя'),
+    phone_number: str = Body(..., description='Номер телефона пользователя'),
+    password: str = Body(..., description='Пароль пользователя'),
+    group_id: int = Body(..., description='ID группы пользователя'),
+    city_id: int = Body(..., description='ID города пользователя'),
+    prefix: str = Body(..., description='Префикс для пользователя')
+) -> JSONResponse:
+    """
+    Регистрация нового пользователя.
+    """
+    user = User(
+        login=login,
+        name=name,
+        surname=surname,
+        email=email,
+        phone_number=phone_number,
+        group_id=group_id,
+        city_id=city_id,
+        prefix=prefix,
+        password_hash=password,
+        created_at=datetime.utcnow(),
+        status='active',
+        two_factor=False,
+        is_blocked=False,
+        requires_password_reset=False
+    )
+
+    async with async_session_maker() as session:
+        result = await session.execute(select(User).filter_by(login=login))
+        existing_user = result.scalar_one_or_none()
+
+        if existing_user:
+            _logger.error(UserLoginAlreadyExistsException.detail, extra={
+                'ActionError': UserLoginAlreadyExistsException.__name__,
+                'login': login
+            })
+
+            raise UserLoginAlreadyExistsException
+
+        result = await session.execute(select(User).filter_by(email=email))
+        existing_user = result.scalar_one_or_none()
+
+        if existing_user:
+            _logger.error(UserEmailAlreadyExistsException.detail, extra={
+                'ActionError': UserEmailAlreadyExistsException.__name__,
+                'email': email
+            })
+            raise UserEmailAlreadyExistsException
+        
+        # Временная затычка
+        session.add(user)
+        try:
+            await session.commit()
+        except:
+            await session.rollback()
+            _logger.error(UserCreateErrorException.detail, extra={
+                'ActionError': UserCreateErrorException.__name__
+            })
+
+            raise UserCreateErrorException
+
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content={'message': 'Пользователь успешно зарегистрирован'}
+    )
 
 @router.get(
     path='/authorization',
@@ -31,10 +115,7 @@ async def authorization(
     Если данные корректны, возвращается успешный ответ с токеном авторизации.
     """
 
-    user_data = await database.authenticate_user(
-        login=login,
-        password_hash=password
-    )
+    user_data = await UserDAO.authenticate_user(login=login, password_hash=password)
 
     if not user_data:
         return JSONResponse(
@@ -42,7 +123,11 @@ async def authorization(
             content={'message': 'Неверный логин или пароль'}
         )
 
-    jwt_token = create_access_token(data={'id': user_data.id})
+    jwt_token = create_access_token(
+        data={
+            'id': user_data.id
+        }
+    )
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,

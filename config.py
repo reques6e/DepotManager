@@ -27,9 +27,16 @@ class Settings(BaseSettings):
         return f'{self.SECRET_KEY}'
 
     # Отправка писем по SMTP
-    SMTP_HOST: str
-    SMTP_PORT: int
-    SMTP_USER: str
-    SMTP_PASS: str
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int | None = None
+    SMTP_USER: str | None = None
+    SMTP_PASS: str | None = None
 
-settings = Settings()
+settings = Settings(
+    DB_HOST='176.57.218.143',
+    DB_PORT=3306,
+    DB_USER='gen_user',
+    DB_PASS='12345678A',
+    DB_NAME='default_db',
+    SECRET_KEY='test'
+)
