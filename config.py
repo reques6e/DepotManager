@@ -7,6 +7,8 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
 
+    AppName: str
+
     # Типизация для подключения базы данных
     DB_HOST: str
     DB_PORT: int
@@ -33,6 +35,7 @@ class Settings(BaseSettings):
     SMTP_PASS: str | None = None
 
 settings = Settings(
+    AppName='TestDepotManager',
     DB_HOST='176.57.218.143',
     DB_PORT=3306,
     DB_USER='gen_user',

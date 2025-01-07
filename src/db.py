@@ -166,6 +166,6 @@ class DepotItemsType(Base):
 
 async def create_tables():
     async with engine.begin() as conn:
-        print("Creating tables...")
+        print('Создание таблицы')
         await conn.run_sync(Base.metadata.create_all)
-        print("Tables created successfully!")
+        print('Таблица была успешно создана')

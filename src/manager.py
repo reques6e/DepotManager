@@ -12,14 +12,14 @@ import pyotp
 import qrcode 
 import io
 
-from src.config import config, settings
+from config import settings
 from api.models import UserStructure
 
 
 class TwoFactor:
     def __init__(
         self, 
-        secret_key: str = config.SECRET_KEY
+        secret_key: str = settings.SECRET_KEY
     ) -> None:
         self.secret_key = secret_key
         self.totp = pyotp.TOTP(self.secret_key)
@@ -27,7 +27,7 @@ class TwoFactor:
     async def generate_qr(
         self, 
         login: str, 
-        issuer_name: str = settings.app.name
+        issuer_name: str = settings.AppName
     ) -> bytes:
         """
         Генерирует QR-код в виде байтового объекта.

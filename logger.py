@@ -26,7 +26,3 @@ formatter = CustomJsonFormatter(
 logHandler.setFormatter(formatter)
 _logger.addHandler(logHandler)
 _logger.setLevel(logging.INFO)
-
-_logger.info("Request handling time", extra={
-    "process_time": 1
-})
