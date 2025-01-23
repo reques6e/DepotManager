@@ -11,15 +11,17 @@ import time
 import pyotp 
 import qrcode 
 import io
+import aiohttp
 
-from src.config import config, settings
+from config import settings
 from api.models import UserStructure
+from packaging.version import Version as _versionCompare
 
 
 class TwoFactor:
     def __init__(
         self, 
-        secret_key: str = config.SECRET_KEY
+        secret_key: str = settings.SECRET_KEY
     ) -> None:
         self.secret_key = secret_key
         self.totp = pyotp.TOTP(self.secret_key)
@@ -27,7 +29,7 @@ class TwoFactor:
     async def generate_qr(
         self, 
         login: str, 
-        issuer_name: str = settings.app.name
+        issuer_name: str = settings.AppName
     ) -> bytes:
         """
         Генерирует QR-код в виде байтового объекта.
@@ -56,10 +58,32 @@ class TwoFactor:
         return self.totp.verify(code)
 
 
-class UserDataManager:
+class SystemManager:
+    __app_version__ = '0.1 Alpha'
+
+    def __init__(self):
+        pass
+
+    async def check_updates(self) -> bool:
+        """Проверка обновлений"""
+        async with aiohttp.ClientSession() as session:
+            # В URL указан тестовый сервер, ожидается ответ в таком формате:
+            # {"version": "0.2 Beta"}
+            async with session.get(
+                url='https://depot.repo.reques6e.ru/version'
+            ) as response:
+                if response.status == 200:
+                    latest_version = await response.json()['version']
+                    if _versionCompare(latest_version) > _versionCompare(__class__.__app_version__):
+                        return True
+
+                return False
+
+class UserManager:
     def __init__(self):
         pass
     
+
     @staticmethod
     async def validate_user(
         user: UserStructure
@@ -159,7 +183,6 @@ class UserDataManager:
         :return: Обновлённый объект пользователя.
         """
         ...
-
 
 class TaskManager:
     TASK_TYPE_LIST = [
