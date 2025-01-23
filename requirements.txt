@@ -5,3 +5,5 @@ python-json-logger==3.2.1
 qrcode==8.0
 pyotp==2.9.0
 sqlalchemy==2.0.36
+aiohttp==3.11.11
+packaging==24.2
