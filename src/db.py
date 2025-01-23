@@ -127,10 +127,10 @@ class DepotItems(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=True)
 
-    depot = relationship('Depot', backref='items')
-    depot_sections = relationship('DepotSection', backref='items')
-    depot_items_type = relationship('DepotItemsType', backref='items')
-    supplier = relationship('Supplier', backref='depot_items')
+    depot = relationship('Depot', backref='items') # Связь с таблицей складов
+    depot_sections = relationship('DepotSection', backref='items') # Связь с таблицей секции складов
+    depot_items_type = relationship('DepotItemsType', backref='items') # Связь с таблицей типов items складов
+    supplier = relationship('Supplier', backref='depot_items') # Связь с таблицей поставщиков
 
 
 class Supplier(Base):
@@ -162,6 +162,16 @@ class DepotItemsType(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(250), nullable=False)
+
+class AuthorizationArchive(Base):
+    __tablename__ = 'authorization_archive'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String(250), ForeignKey('users.id'), nullable=False)
+    auth_time = Column(DateTime, default=datetime.utcnow, nullable=False)
+    ip = Column(String(15), nullable=False)
+
+    user = relationship('User', backref='items') # Связь с таблицей пользователей
 
 
 async def create_tables():
