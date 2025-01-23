@@ -131,3 +131,9 @@ class DepotItemsType(BaseModel):
 class References(BaseModel):
     id: int | None = Field(None, description='Уникальный идентификатор типа справки')
 
+
+class AuthorizationArchive(BaseModel):
+    id: int | None = Field(None, description='Архив авторизаций')
+    user_id: int = Field(..., max_length=250, description='ID пользователя, на чей аккаунт была произведена авторизация')
+    auth_time: datetime = Field(default_factory=datetime.utcnow, description='Время авторизации')
+    ip: str = Field(..., max_length=15, description='IP-адрес')
