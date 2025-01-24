@@ -11,7 +11,7 @@ from api.models import (
 from src.db import async_session_maker, GroupUsers
 from api.group.dao import GroupDAO
 from exceptions import GroupDeleteErrorException
-from logger import _logger
+from src.logger import _logger
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
