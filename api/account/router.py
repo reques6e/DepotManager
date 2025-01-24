@@ -16,7 +16,7 @@ from exceptions import (
     UserLoginAlreadyExistsException,
     UserEmailAlreadyExistsException
 )
-from logger import _logger
+from src.logger import _logger
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -128,7 +128,7 @@ async def authorization(
             'id': user_data.id
         }
     )
-
+    
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
