@@ -79,15 +79,25 @@ class SystemManager:
 
                 return False
 
+
+class OperationResult:
+    def __init__(
+        self, 
+        result: bool = False, 
+        message: str | None = None
+    ) -> None:
+        self.result = result
+        self.message = message
+
+
 class UserManager:
     def __init__(self):
         pass
     
-
     @staticmethod
     async def validate_user(
         user: UserStructure
-    ) -> bool:
+    ) -> OperationResult:
         """
         Проверка пользователя на блокировки.
         :param user: Информация о пользователе.
@@ -95,9 +105,9 @@ class UserManager:
         """
 
         if user.is_blocked:
-            return True
+            return OperationResult(False, 'is_blocked')
         
-        return False
+        return True
 
     @staticmethod
     async def update_phone_number(
