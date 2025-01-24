@@ -7,10 +7,15 @@ from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from typing import Annotated
 
-from config import settings
+
 from api.models import UserStructure
 from api.account.dao import UserDAO
+
+from src.manager import UserManager
+from src.logger import _logger
+
 from config import settings
+from exceptions import UserIsBlocked, FailCheckUserData
 
 ALGORITHM = 'HS256'
 
@@ -32,31 +37,22 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
     Raises:
         HTTPException: В случае ошибки валидации токена или отсутствии пользователя.
     """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail='Не удалось проверить учетные данные',
-        headers={'WWW-Authenticate': 'Bearer'},
-    )
-
+    
     try:
         payload = jwt.decode(token, settings.SECRET_JWT_KEY, algorithms=[ALGORITHM])
         user_id = payload.get('id')
         if user_id is None:
-            raise credentials_exception
+            raise FailCheckUserData
     except InvalidTokenError:
-        raise credentials_exception
+        raise FailCheckUserData
 
     user = await UserDAO.find_one_or_none(id=user_id)
     if user is None:
-        raise credentials_exception
+        raise FailCheckUserData
     
-    if user.is_blocked:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f'Пользователь {user.login} заблокирован',
-            headers={'WWW-Authenticate': 'Bearer'},
-        )
-    
+    if await UserManager.validate_user(user=user):
+        raise UserIsBlocked
+
     return user
 
 
