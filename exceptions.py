@@ -27,7 +27,11 @@ class UserEmailAlreadyExistsException(BookingException):
 
 class UserIsBlocked(BookingException):
     status_code=status.HTTP_403_FORBIDDEN
-    detail='пользователь заблокирован'
+    detail='Пользователь не имеет доступ к данному ресурсу'
+
+class FailCheckUserData(BookingException):
+    status_code=status.HTTP_403_FORBIDDEN
+    detail='Не удалось проверить учетные данные'
 
 class IncorrectEmailOrPasswordException(BookingException):
     status_code=status.HTTP_401_UNAUTHORIZED
