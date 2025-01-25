@@ -148,13 +148,30 @@ class UserManager:
     async def update_phone_number(
         user: UserStructure, 
         phone_number: str
-    ) -> UserStructure:
+    ) -> bool | UserStructure:
         """
         Обновление номера телефона пользователя.
         :param user: Информация о пользователе.
         :param phone_number: Новый номер телефона. (Обязательно с +)
         :return: Обновлённый объект пользователя.
         """
+        # Проверка на наличие "+" в начале номера
+        if not phone_number.startswith("+"):
+            return False
+
+        # Проверка на отсутствие букв
+        if not phone_number[1:].isdigit():
+            return False
+
+        # Проверка длины номера
+        # if len(phone_number) != 12:
+        #     ...
+
+        # TODO
+        # Нужно добавить проверку, 1 номер = 1 юзер.
+        # На каждый аккаунт должен быть свой уникальный
+        # номер телефона
+
         user.phone_number = phone_number
         return user
 
@@ -170,18 +187,24 @@ class UserManager:
         if '@' not in email or '.' not in email.split('@')[-1]:
             raise ValueError('Неверный формат email')
         
+        # TODO
+        # Нужно добавить проверку, 1 email = 1 юзер.
+        # На каждый аккаунт должен быть свой уникальный
+        # email
+
         return True
     
-    @staticmethod
-    async def deactivate_user(
-        user: UserStructure
-    ) -> UserStructure:
-        """
-        Деактивация пользователя (установка статуса "Заблокирован").
-        :param user: Информация о пользователе.
-        :return: Обновлённый объект пользователя.
-        """
-        ...
+    # soon
+    # @staticmethod
+    # async def deactivate_user(
+    #     user: UserStructure
+    # ) -> UserStructure:
+    #     """
+    #     Деактивация пользователя (установка статуса "Заблокирован").
+    #     :param user: Информация о пользователе.
+    #     :return: Обновлённый объект пользователя.
+    #     """
+    #     ...
 
     @staticmethod
     async def reset_user_password(
