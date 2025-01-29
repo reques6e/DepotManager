@@ -110,19 +110,6 @@ class UserManager:
         return True
 
     @staticmethod
-    async def update_phone_number(
-        user: UserStructure, 
-        phone_number: str
-    ) -> UserStructure:
-        """
-        Обновление номера телефона пользователя.
-        :param user: Информация о пользователе.
-        :param phone_number: Новый номер телефона.
-        :return: Обновлённый объект пользователя.
-        """
-        ...
-
-    @staticmethod
     async def get_user_full_name(
         user: UserStructure
     ) -> str:
