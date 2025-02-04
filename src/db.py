@@ -163,15 +163,28 @@ class DepotItemsType(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(250), nullable=False)
 
-class AuthorizationArchive(Base):
-    __tablename__ = 'authorization_archive'
+class DepotCompanyCars(Base):
+    __tablename__ = 'company_cars'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String(250), ForeignKey('users.id'), nullable=False)
-    auth_time = Column(DateTime, default=datetime.utcnow, nullable=False)
-    ip = Column(String(15), nullable=False)
+    name = Column(String(250), nullable=False) # Название машины (НЕ МОДЕЛЬ!)
+    brand = Column(String(100), nullable=False) # Бренд (Toyota, BMW, ... )
+    model = Column(String(100), nullable=False) # Название модели
+    vin_body_number = Column(String(17), nullable=False) # ВИН или номер кузова (для японских авто)
+    year = Column(Integer, nullable=False) # Год выпуска авто
+    license_plates = Column(String(100), nullable=True) # Гос. номера авто
+    vehicle_payload = Column(Integer, nullable=False) # Грузоподъемность авто (в кг)
+    fuel_type = Column(String(100), nullable=True) # Тип топлива (бензин, дизель, электро)
 
-    user = relationship('User', backref='items') # Связь с таблицей пользователей
+# class AuthorizationArchive(Base):
+#     __tablename__ = 'authorization_archive'
+
+#     id = Column(Integer, primary_key=True, autoincrement=True)
+#     user_id = Column(String(250), ForeignKey('users.id'), nullable=False)
+#     auth_time = Column(DateTime, default=datetime.utcnow, nullable=False)
+#     ip = Column(String(15), nullable=False)
+
+#     user = relationship('User', backref='items') # Связь с таблицей пользователей
 
 
 async def create_tables():
