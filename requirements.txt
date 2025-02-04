@@ -8,3 +8,4 @@ sqlalchemy==2.0.36
 aiohttp==3.11.11
 packaging==24.2
 aioboto3==13.4.0
+asyncmy==0.2.10
