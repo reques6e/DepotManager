@@ -1,30 +1,16 @@
-try:
-    import uvicorn
-    import asyncio
-    import logging
+import asyncio
+import uvicorn
+import logging
 
-    from fastapi import FastAPI
-    from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.openapi.utils import get_openapi
-    from fastapi.security import OAuth2PasswordBearer
-except ImportError:
-    def main() -> None:
-        import sys
-
-        print(
-            'Библиотеки не установлены.'
-            'В терминал нужно прописать:\n'
-            'pip3 install -r requirements.txt'
-        )
-        sys.exit(1)
-
-    main()
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
+from fastapi.security import OAuth2PasswordBearer
 
 from api.account.router import router as router_account 
 from api.group.router import router as router_group 
 
-from src.db import async_session_maker
-import asyncio
+from src.db import create_tables, async_session_maker
 
 logging.basicConfig(level=logging.WARNING)  
 logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
@@ -79,6 +65,7 @@ api.openapi_schema["components"]["securitySchemes"] = {
 api.openapi_schema["security"] = [{"BearerAuth": []}]
 
 if __name__ == '__main__':
+    # asyncio.run(create_tables())
     uvicorn.run(
         app='app:api', 
         host='0.0.0.0', 
