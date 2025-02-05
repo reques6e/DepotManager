@@ -10,7 +10,7 @@ class GroupDAO(BaseDAO):
     model = GroupUsers
 
     @classmethod
-    async def get_all():
+    async def get_all(self) -> dict | None:
         """
         Получает все группы
         """
