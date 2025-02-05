@@ -50,7 +50,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> Use
     if user is None:
         raise FailCheckUserData
     
-    if await UserManager.validate_user(user=user):
+    validate = await UserManager.validate_user(user=user)
+    if validate.result == False:
         raise UserIsBlocked
 
     return user
