@@ -13,6 +13,7 @@ import qrcode
 import io
 import aiohttp
 
+from datetime import datetime
 from config import settings
 from api.models import UserStructure
 from packaging.version import Version as _versionCompare
@@ -107,7 +108,7 @@ class UserManager:
         if user.is_blocked:
             return OperationResult(False, 'is_blocked')
         
-        return True
+        return OperationResult(True)
 
     @staticmethod
     async def get_user_full_name(
@@ -131,6 +132,30 @@ class UserManager:
         """
         return user.two_factor
 
+    @staticmethod
+    async def update_fio(
+        user: UserStructure, 
+        name: str,
+        surname: str
+    ) -> bool | UserStructure:
+        """
+        Обновление имени пользователя и фамилии.
+        :param user: Информация о пользователе.
+        :param name: Имя пользователя
+        :param surname: Фамилия пользователя
+        :return: Обновлённый объект пользователя.
+        """
+
+        # Проверка длины имени
+        if len(name) > 30: 
+            return False
+
+        # Проверка длины фамилии
+        if len(surname) > 30: 
+            return False
+        
+        return user
+        
     @staticmethod
     async def update_phone_number(
         user: UserStructure, 
@@ -251,3 +276,10 @@ class TaskManager:
         if task_type not in self.TASK_TYPE_LIST:
             raise ValueError(f"Недопустимый тип задачи: {task_type}")
         return True
+    
+    async def create_task(
+        self,
+        task: str | None = None,
+        time: datetime | None = None,
+    ):
+        ...
