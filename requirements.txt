@@ -9,3 +9,4 @@ aiohttp==3.11.11
 packaging==24.2
 aioboto3==13.4.0
 asyncmy==0.2.10
+boto3==1.35.63
