@@ -11,12 +11,17 @@ import time
 import pyotp 
 import qrcode 
 import io
+import os
 import aiohttp
+import uuid as uuid_generate
 
 from datetime import datetime
-from config import settings
-from api.models import UserStructure
 from packaging.version import Version as _versionCompare
+
+from api.models import UserStructure
+from src.db import Attachment, async_session_maker
+from src.s3 import _S3Connector, _S3Config
+from config import settings
 
 
 class TwoFactor:
@@ -89,6 +94,51 @@ class OperationResult:
     ) -> None:
         self.result = result
         self.message = message
+
+S3Data = _S3Config(
+    bucket_name=settings.S3_BUCKET_NAME,
+    endpoint_url=settings.S3_ENDPOINT_URL,
+    region_name=settings.S3_REGION_NAME,
+    aws_access_key_id=settings.S3_ACCESS_KEY,
+    aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY
+)
+
+class AttachmentManager:
+    def __init__(self):
+        pass
+
+    def file_url(self, file_name):
+        return f'{S3Data.endpoint_url}/{S3Data.bucket_name}/{file_name}'
+
+    @staticmethod
+    async def upload(
+        file_name: str, 
+        file_content: bytes
+    ):
+        uuid = uuid_generate.uuid4()
+        file_extension = os.path.splitext(file_name)[1].lstrip('.')
+        new_file_name = f'{uuid}.{file_extension}'
+
+        file_stream = io.BytesIO(file_content)
+        
+        async with _S3Connector(S3Data) as s3:
+            await s3.upload_fileobj(fileobj=file_stream, key=new_file_name)
+        
+        attachment_data = Attachment(
+            uuid=uuid,
+            file_path=new_file_name,
+            attachment_type='file',
+            file_extension=file_extension
+        )
+
+        async with async_session_maker() as session:
+            session.add(attachment_data)
+            try:
+                await session.commit()
+            except Exception as e:
+                await session.rollback()
+
+        return new_file_name
 
 
 class UserManager:
