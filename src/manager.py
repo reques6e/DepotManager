@@ -107,7 +107,11 @@ S3Data = _S3Config(
 
 class AttachmentType:
     FILE: str = 'file'
-    B2: str = 'b2'
+    VIDEO: str = 'video'
+    PHOTO: str = 'photo'
+    AUDIO: str = 'audio'
+    DOCUMENT: str = 'document'
+    ARCHIVE: str = 'archive'
 
 
 class FileObj:
