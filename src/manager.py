@@ -95,6 +95,7 @@ class OperationResult:
         self.result = result
         self.message = message
 
+
 S3Data = _S3Config(
     bucket_name=settings.S3_BUCKET_NAME,
     endpoint_url=settings.S3_ENDPOINT_URL,
@@ -102,6 +103,29 @@ S3Data = _S3Config(
     aws_access_key_id=settings.S3_ACCESS_KEY,
     aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY
 )
+
+
+class AttachmentType:
+    FILE: str = 'file'
+    B2: str = 'b2'
+
+
+class FileObj:
+    def __init__(
+        self,
+        name: str | None,
+        extension: str,
+        attachment_type: str | None = AttachmentType.FILE
+    ):
+        self.name = name
+        self.extension = extension
+        self.attachment_type = attachment_type
+
+
+    def __str__(self) -> str:
+        """Return full file name"""
+        return f'{self.name}.{self.extension}'
+
 
 class AttachmentManager:
     def __init__(self):
@@ -114,19 +138,27 @@ class AttachmentManager:
     async def upload(
         file_name: str, 
         file_content: bytes
-    ):
+    ) -> FileObj:
         uuid = uuid_generate.uuid4()
         file_extension = os.path.splitext(file_name)[1].lstrip('.')
-        new_file_name = f'{uuid}.{file_extension}'
+        obj = FileObj(
+            name=uuid, 
+            extension=file_extension,
+            attachment_type=AttachmentType.FILE
+        )
+        full_file_name = obj.__str__()
 
         file_stream = io.BytesIO(file_content)
         
         async with _S3Connector(S3Data) as s3:
-            await s3.upload_fileobj(fileobj=file_stream, key=new_file_name)
+            await s3.upload_fileobj(
+                fileobj=file_stream, 
+                key=full_file_name
+            )
         
         attachment_data = Attachment(
             uuid=uuid,
-            file_path=new_file_name,
+            file_path=full_file_name,
             attachment_type='file',
             file_extension=file_extension
         )
@@ -138,7 +170,7 @@ class AttachmentManager:
             except Exception as e:
                 await session.rollback()
 
-        return new_file_name
+        return obj
 
 
 class UserManager:
