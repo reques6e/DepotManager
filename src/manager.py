@@ -21,6 +21,7 @@ from packaging.version import Version as _versionCompare
 from api.models import UserStructure
 from src.db import Attachment, async_session_maker
 from src.s3 import _S3Connector, _S3Config
+from src.logger import _logger
 from config import settings
 
 
@@ -115,20 +116,54 @@ class AttachmentType:
 
 
 class FileObj:
+
+    BANNED_EXTENSIONS = [ 
+        'sql', 'js', 'php', 'py', 'jsp', 'vbs', 'dll',
+        'msi', 'cgi', 'pl'
+    ]
+
     def __init__(
         self,
-        name: str | None,
+        name: str,
         extension: str,
         attachment_type: str | None = AttachmentType.FILE
     ):
-        self.name = name
-        self.extension = extension
+        self._name = name
+        self._extension = extension
         self.attachment_type = attachment_type
 
+    @property
+    def extension(self) -> str:
+        if self._extension.lower() in self.BANNED_EXTENSIONS:
+            raise ValueError(f'Формат файла {self._extension} запрещен к загрузке')
+        return self._extension 
+
+    @property
+    def name(self) -> str:
+        if len(self._name) > 50:
+            raise ValueError('Слишком длинное название файла')
+        return self._name 
+
+    def __repr__(self) -> str:
+        """Представление объекта для отладки."""
+        return (
+            f'FileObj(name={self.name!r}, '
+            f'extension={self.extension!r}, '
+            f'attachment_type={self.attachment_type!r})'
+        )
 
     def __str__(self) -> str:
-        """Return full file name"""
+        """Возвращает полное название файла.
+
+        Пример:
+        --------
+        example.exe
+        """
         return f'{self.name}.{self.extension}'
+
+    def is_banned(self) -> bool:
+        """Проверяет, запрещено ли расширение файла."""
+        return self.extension.lower() in self.BANNED_EXTENSIONS
 
 
 class AttachmentManager:
@@ -137,13 +172,14 @@ class AttachmentManager:
 
     def file_url(self, file_name):
         return f'{S3Data.endpoint_url}/{S3Data.bucket_name}/{file_name}'
-
+    
     @staticmethod
     async def upload(
         file_name: str, 
         file_content: bytes
     ) -> FileObj:
         uuid = uuid_generate.uuid4()
+
         file_extension = os.path.splitext(file_name)[1].lstrip('.')
         obj = FileObj(
             name=uuid, 
@@ -172,6 +208,9 @@ class AttachmentManager:
             try:
                 await session.commit()
             except Exception as e:
+                _logger.error(
+                    f'В процессе создания attachment_data произошла ошибка: {e}'
+                )
                 await session.rollback()
 
         return obj
