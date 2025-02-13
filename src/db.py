@@ -176,16 +176,15 @@ class DepotCompanyCars(Base):
     vehicle_payload = Column(Integer, nullable=False) # Грузоподъемность авто (в кг)
     fuel_type = Column(String(100), nullable=True) # Тип топлива (бензин, дизель, электро)
 
-# class AuthorizationArchive(Base):
-#     __tablename__ = 'authorization_archive'
 
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     user_id = Column(String(250), ForeignKey('users.id'), nullable=False)
-#     auth_time = Column(DateTime, default=datetime.utcnow, nullable=False)
-#     ip = Column(String(15), nullable=False)
+class Attachment(Base):
+    __tablename__ = 'attachment'
 
-#     user = relationship('User', backref='items') # Связь с таблицей пользователей
-
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    uuid = Column(String(100), nullable=False) # UUID вложения
+    file_path = Column(String(250), nullable=False) # Путь к файлу (это не URL)
+    attachment_type = Column(String(100), nullable=False) # Тип вложения: видео, фото, файл
+    file_extension = Column(String(100), nullable=False) # Расширение файла
 
 async def create_tables():
     async with engine.begin() as conn:

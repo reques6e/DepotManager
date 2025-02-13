@@ -11,12 +11,18 @@ import time
 import pyotp 
 import qrcode 
 import io
+import os
 import aiohttp
+import uuid as uuid_generate
 
 from datetime import datetime
-from config import settings
-from api.models import UserStructure
 from packaging.version import Version as _versionCompare
+
+from api.models import UserStructure
+from src.db import Attachment, async_session_maker
+from src.s3 import _S3Connector, _S3Config
+from src.logger import _logger
+from config import settings
 
 
 class TwoFactor:
@@ -89,6 +95,125 @@ class OperationResult:
     ) -> None:
         self.result = result
         self.message = message
+
+
+S3Data = _S3Config(
+    bucket_name=settings.S3_BUCKET_NAME,
+    endpoint_url=settings.S3_ENDPOINT_URL,
+    region_name=settings.S3_REGION_NAME,
+    aws_access_key_id=settings.S3_ACCESS_KEY,
+    aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY
+)
+
+
+class AttachmentType:
+    FILE: str = 'file'
+    VIDEO: str = 'video'
+    PHOTO: str = 'photo'
+    AUDIO: str = 'audio'
+    DOCUMENT: str = 'document'
+    ARCHIVE: str = 'archive'
+
+
+class FileObj:
+
+    BANNED_EXTENSIONS = [ 
+        'sql', 'js', 'php', 'py', 'jsp', 'vbs', 'dll',
+        'msi', 'cgi', 'pl'
+    ]
+
+    def __init__(
+        self,
+        name: str,
+        extension: str,
+        attachment_type: str | None = AttachmentType.FILE
+    ):
+        self._name = name
+        self._extension = extension
+        self.attachment_type = attachment_type
+
+    @property
+    def extension(self) -> str:
+        if self._extension.lower() in self.BANNED_EXTENSIONS:
+            raise ValueError(f'Формат файла {self._extension} запрещен к загрузке')
+        return self._extension 
+
+    @property
+    def name(self) -> str:
+        if len(self._name) > 50:
+            raise ValueError('Слишком длинное название файла')
+        return self._name 
+
+    def __repr__(self) -> str:
+        """Представление объекта для отладки."""
+        return (
+            f'FileObj(name={self.name!r}, '
+            f'extension={self.extension!r}, '
+            f'attachment_type={self.attachment_type!r})'
+        )
+
+    def __str__(self) -> str:
+        """Возвращает полное название файла.
+
+        Пример:
+        --------
+        example.exe
+        """
+        return f'{self.name}.{self.extension}'
+
+    def is_banned(self) -> bool:
+        """Проверяет, запрещено ли расширение файла."""
+        return self.extension.lower() in self.BANNED_EXTENSIONS
+
+
+class AttachmentManager:
+    def __init__(self):
+        pass
+
+    def file_url(self, file_name):
+        return f'{S3Data.endpoint_url}/{S3Data.bucket_name}/{file_name}'
+    
+    @staticmethod
+    async def upload(
+        file_name: str, 
+        file_content: bytes
+    ) -> FileObj:
+        uuid = uuid_generate.uuid4()
+
+        file_extension = os.path.splitext(file_name)[1].lstrip('.')
+        obj = FileObj(
+            name=uuid, 
+            extension=file_extension,
+            attachment_type=AttachmentType.FILE
+        )
+        full_file_name = obj.__str__()
+
+        file_stream = io.BytesIO(file_content)
+        
+        async with _S3Connector(S3Data) as s3:
+            await s3.upload_fileobj(
+                fileobj=file_stream, 
+                key=full_file_name
+            )
+        
+        attachment_data = Attachment(
+            uuid=uuid,
+            file_path=full_file_name,
+            attachment_type='file',
+            file_extension=file_extension
+        )
+
+        async with async_session_maker() as session:
+            session.add(attachment_data)
+            try:
+                await session.commit()
+            except Exception as e:
+                _logger.error(
+                    f'В процессе создания attachment_data произошла ошибка: {e}'
+                )
+                await session.rollback()
+
+        return obj
 
 
 class UserManager:

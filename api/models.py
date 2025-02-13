@@ -137,3 +137,14 @@ class AuthorizationArchive(BaseModel):
     user_id: int = Field(..., max_length=250, description='ID пользователя, на чей аккаунт была произведена авторизация')
     auth_time: datetime = Field(default_factory=datetime.utcnow, description='Время авторизации')
     ip: str = Field(..., max_length=15, description='IP-адрес')
+
+
+# TODO DepotCompanyCars
+
+
+class Attachment(BaseModel):
+    id: int | None = Field(None, description='ID Вложения')
+    uuid: str = Field(..., max_length=100, description='UUID Вложения')
+    file_path: str = Field(..., max_length=100, description='Путь к файлу')
+    attachment_type: str = Field(..., max_length=100, description='Тип файла')
+    file_extension: str = Field(..., max_length=100, description='Расширение файла')
