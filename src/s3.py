@@ -3,86 +3,46 @@ import aioboto3
 from botocore.config import Config
 
 
-class _S3Config:
-    def __init__(
-        self,
-        bucket_name: str,
-        endpoint_url: str,
-        region_name: str, 
-        aws_access_key_id: str,
-        aws_secret_access_key: str
-    ):
-        self.bucket_name = bucket_name
-        self.endpoint_url = endpoint_url
-        self.region_name = region_name
-        self.aws_access_key_id = aws_access_key_id
-        self.aws_secret_access_key = aws_secret_access_key
-
-
 class _S3Connector:
-    def __init__(self, s3_config: _S3Config):
-        self.bucket_name = s3_config.bucket_name
-        self.endpoint_url = s3_config.endpoint_url
-        self.region_name = s3_config.region_name
-        self.aws_access_key_id = s3_config.aws_access_key_id
-        self.aws_secret_access_key = s3_config.aws_secret_access_key
-        
+    def __init__(self, bucket_name, endpoint_url, region_name, aws_access_key_id, aws_secret_access_key):
+        self.bucket_name = bucket_name
         self.session = aioboto3.Session()
         self.client_args = {
             'service_name': 's3',
-            'endpoint_url': self.endpoint_url,
-            'region_name': self.region_name,
-            'aws_access_key_id': self.aws_access_key_id,
-            'aws_secret_access_key': self.aws_secret_access_key,
-            'config': Config(signature_version='s3v4')
+            'endpoint_url': endpoint_url,
+            'region_name': region_name,
+            'aws_access_key_id': aws_access_key_id,
+            'aws_secret_access_key': aws_secret_access_key,
+            'config': Config(s3={'addressing_style': 'path'})
         }
-        self.client = None
 
     async def __aenter__(self):
         self.client = await self.session.client(**self.client_args).__aenter__()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if self.client:
-            await self.client.__aexit__(exc_type, exc_val, exc_tb)
+        await self.client.__aexit__(exc_type, exc_val, exc_tb)
 
     async def create_bucket(self):
-        if not self.client:
-            raise AttributeError("S3 client is not initialized.")
         await self.client.create_bucket(Bucket=self.bucket_name)
 
     async def list_buckets(self):
-        if not self.client:
-            raise AttributeError("S3 client is not initialized.")
         return await self.client.list_buckets()
 
     async def upload_file(self, filename, key):
-        if not self.client:
-            raise AttributeError("S3 client is not initialized.")
         await self.client.upload_file(filename, self.bucket_name, key)
 
-    async def upload_fileobj(self, fileobj, key):
-        """Загружает файл в S3"""
-        if not self.client:
-            raise AttributeError("S3 client is not initialized.")
-        await self.client.upload_fileobj(fileobj, self.bucket_name, key)
-
-        # Возвращаем URL, учитывая кастомный endpoint
-        return f"{self.client.meta.endpoint_url}/{self.bucket_name}/{key}"
+    async def upload_fileobj(self, filename, key):
+        async with open(filename, 'rb') as data:
+            await self.client.upload_fileobj(data, self.bucket_name, key)
 
     async def list_objects(self):
-        if not self.client:
-            raise AttributeError("S3 client is not initialized.")
         return await self.client.list_objects(Bucket=self.bucket_name)
 
     async def delete_object(self, key):
-        if not self.client:
-            raise AttributeError("S3 client is not initialized.")
         await self.client.delete_object(Bucket=self.bucket_name, Key=key)
 
     async def delete_bucket(self):
-        if not self.client:
-            raise AttributeError("S3 client is not initialized.")
         await self.client.delete_bucket(Bucket=self.bucket_name)
 
 

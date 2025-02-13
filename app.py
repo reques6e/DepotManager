@@ -8,7 +8,6 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.security import OAuth2PasswordBearer
 
 from api.account.router import router as router_account 
-from api.attachment.router import router as router_attachment
 from api.group.router import router as router_group 
 
 from src.db import create_tables, async_session_maker
@@ -46,7 +45,6 @@ api.add_middleware(
 )
 
 api.include_router(router_account)
-api.include_router(router_attachment)
 api.include_router(router_group)
 
 api.openapi_schema = get_openapi(
@@ -63,10 +61,11 @@ api.openapi_schema["components"]["securitySchemes"] = {
         "bearerFormat": "JWT"
     }
 }
+
 api.openapi_schema["security"] = [{"BearerAuth": []}]
 
 if __name__ == '__main__':
-    asyncio.run(create_tables())
+    # asyncio.run(create_tables())
     uvicorn.run(
         app='app:api', 
         host='0.0.0.0', 
